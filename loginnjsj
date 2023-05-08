@@ -1,0 +1,302 @@
+import random
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+import tkinter as tk
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import NoAlertPresentException
+
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome(options=chrome_options)
+driver.get('https://hometax.go.kr/websquare/websquare.html?w2xPath=/ui/pp/index.xml')
+# 현재 윈도우 핸들 저장
+current_handle = driver.current_window_handle
+
+
+class MultiInputWindow:
+    def __init__(self, parent, title, inputs):
+        self.parent = parent
+        self.title = title
+        self.inputs = inputs
+        self.result = None
+        
+        self.window = tk.Toplevel(parent) if parent else tk.Tk()
+        self.window.title(title)
+        self.window.geometry("300x200")
+        
+        self.input_entries = []
+        for i, name in enumerate(self.inputs):
+            label = tk.Label(self.window, text=name)
+            label.grid(row=i, column=0)
+            
+            entry = tk.Entry(self.window)
+            entry.grid(row=i, column=1)
+            self.input_entries.append(entry)
+        
+        confirm_button = tk.Button(self.window, text="확인", command=self.confirm)
+        confirm_button.grid(row=len(self.inputs), column=1)
+    
+    def confirm(self):
+        self.result = [entry.get() for entry in self.input_entries]
+        self.window.destroy()
+
+inputs = ["아이디", "비밀번호", "인증서", "관리번호", "비밀번호"]
+window = MultiInputWindow(None, "다중 입력 창", inputs)
+window.window.mainloop()
+
+if window.result:
+    user_id, password, cert, management, management_password = window.result
+    print(user_id, password, cert, management, management_password)
+    
+    mainhandle = driver.current_window_handle
+    
+WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="textbox81212912"]'))).click()
+
+time.sleep(5)
+
+
+
+driver.switch_to.frame('txppIframe')
+WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="anchor15"]'))).click()
+
+mainhandle = driver.window_handles
+for i in mainhandle:
+    if i != mainhandle[0] :
+        driver.switch_to.window(i)
+        driver.close()
+print(mainhandle)
+print(len(mainhandle))
+driver.switch_to.window(mainhandle[0])
+
+driver.switch_to.frame('txppIframe')
+#홈택스아이디비번
+myID = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="iptUserId"]')))
+myID.send_keys(user_id)
+passwordin = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="iptUserPw"]')))
+passwordin.send_keys(password)
+loginbu = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="anchor25"]'))).click()
+
+
+time.sleep(1.5)
+
+driver.switch_to.frame('dscert')
+
+time.sleep(1)
+#인증서로그인
+certpass = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="input_cert_pw"]')))
+driver.execute_script("arguments[0].value = arguments[1]", certpass, cert)
+
+
+#certpass = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[11]/div[2]/div[1]/div/div[6]/div[2]/div[2]/div/div/span/input')))
+#certpass.send_keys(cert)
+certbutton = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="btn_confirm_iframe"]')))
+driver.execute_script("arguments[0].click();", certbutton)
+time.sleep(1)
+WebDriverWait(driver, 10).until(EC.alert_is_present())
+
+# 경고창 승인
+alert = driver.switch_to.alert
+alert.accept()
+time.sleep(1)
+
+#관리번호로그인
+txppIframe = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, 'txppIframe')))
+driver.switch_to.frame('txppIframe')
+
+gwanid = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="input1"]')))
+gwanid.send_keys(management)
+
+gwanpass = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="input2"]')))
+gwanpass.send_keys(management_password)
+
+
+
+
+gwlogin = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="trigger41"]')))
+gwlogin.click()
+
+#신고납부탭
+singo = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[3]/div[1]/div[2]/div/ul/li[4]/a/span')))
+singo.click()
+
+txppIframe = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, 'txppIframe')))
+driver.switch_to.frame('txppIframe')
+
+#종소세탭
+jongso = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="sub_a_0405040000"]')))
+jongso.click()
+
+#신고내역 조회
+johoi = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[5]/ul/li[2]/div[1]/a')))
+johoi.click()
+
+
+class PasswordWindow():
+    def __init__(self, driver):
+        self.driver = driver
+        self.root = tk.Tk()
+        self.root.geometry('300x200')
+        self.label = tk.Label(text='주민번호:')
+        self.label.pack(pady=10)
+        self.password_input = tk.Entry(show='*')
+        self.password_input.pack(pady=5)
+        self.confirm_button = tk.Button(text='Confirm', command=self.submit_password, width=20, height=20)
+        self.confirm_button.pack(pady=10)
+    
+    def submit_password(self):
+        password_value = self.password_input.get()
+        password_input_element = self.driver.find_element(By.XPATH, '//*[@id="input_txprRgtNo_UTERNAAZ31"]')
+        password_input_element.clear()
+        time.sleep(0.5)
+        password_input_element.send_keys(password_value)
+        self.root.destroy()
+        self.driver.switch_to.default_content()
+        driver.switch_to.frame('txppIframe')
+        jobutton = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="trigger70_UTERNAAZ31"]')))
+        driver.execute_script("arguments[0].click();", jobutton)
+        time.sleep(1)
+        try:
+            alert1 = driver.switch_to.alert
+            alert1.accept()
+        except NoAlertPresentException:
+            pass  # alert 창이 없는 경우 pass
+        
+        driver.switch_to.window(mainhandle[0])
+        driver.switch_to.frame('txppIframe')
+        
+        jubjj = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[5]/div/div[2]/div/div/div/div/div/div[2]/div[4]/div/div[2]/div/table/tbody/tr[1]/td[13]/span/button')))
+        jubjj.click()
+        
+        time.sleep(1)
+        
+        mainhandle2 = driver.window_handles
+        print(mainhandle2)
+        print(len(mainhandle2))
+        driver.switch_to.window(mainhandle2[1])
+
+        #driver.switch_to.frame('re_iframece7d6698cdc4a480097412597d69d7f0apt13')
+                    #pdf 저장 키
+        pdfjj = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '/html/body/div/div/div[1]/table/tbody/tr/td/div/nobr/button[2]')))
+        # ActionChains 객체 생성
+        actions = ActionChains(driver)
+      # 요소에 마우스 이벤트 발생시키기
+        actions.move_to_element(pdfjj).perform()
+        driver.execute_script("arguments[0].click();", pdfjj)
+        time.sleep(1.5)
+        driver.switch_to.window(mainhandle2[0])
+        driver.switch_to.frame('txppIframe')
+            
+
+            #납부서 여부
+        hwangb = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[5]/div/div[2]/div/div/div/div/div/div[2]/div[4]/div/div[2]/div/table/tbody/tr[1]/td[39]')))    
+        
+        if hwangb.get_attribute("textContent") != "-":
+        
+            napjj = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[5]/div/div[2]/div/div/div/div/div/div[2]/div[4]/div/div[2]/div/table/tbody/tr[1]/td[14]/span/button')))
+            driver.execute_script("arguments[0].click();", napjj)
+            time.sleep(1)
+            
+            try:
+                alert2 = driver.switch_to.alert
+                alert2.accept()
+            except NoAlertPresentException:
+                pass  # alert 창이 없는 경우 pass
+                
+            driver.switch_to.window(mainhandle2[0])
+            print(mainhandle2)
+            
+            
+            
+            #납부확인
+
+
+            driver.switch_to.default_content()
+            driver.switch_to.frame('txppIframe')
+            driver.switch_to.frame('UTERNAAZ68_iframe')
+                #출력
+            napchul = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[3]/div[4]/div/div[2]/div/table/tbody/tr/td[4]/button')))
+            napchul.click()
+            time.sleep(2)
+            mainhandle3 = driver.window_handles
+            last_window = mainhandle3[-1]
+            driver.switch_to.window(last_window)
+            print(mainhandle3)
+            print(len(mainhandle3))      
+            driver.switch_to.window(last_window)
+            
+                #저장
+            nappdf = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '/html/body/div/div/div[1]/table/tbody/tr/td/div/nobr/button[1]')))
+            actions = ActionChains(driver)
+        # 요소에 마우스 이벤트 발생시키기
+            actions.move_to_element(nappdf).perform()
+            
+            time.sleep(0.5)
+            driver.execute_script("arguments[0].click();", nappdf)
+            
+            
+            
+            
+
+                #저장용프레임이라 나와있음
+            #driver.switch_to.frame('re_iframec894e58f0dcaa4abcb57f47c32a9d1051pt10')
+
+                #저장확인
+            nappdf1 = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '/html/body/div/div[2]/div[1]/button[1]')))
+            nappdf1.click()
+            time.sleep(1.5)
+            driver.switch_to.window(mainhandle3[0])
+            #메인으로 돌아갔다가 납부서오기
+            driver.switch_to.default_content()
+            driver.switch_to.frame('txppIframe')
+            driver.switch_to.frame('UTERNAAZ68_iframe')
+            #닫기
+            jicle = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[4]/div/a[2]/input')))
+            actions.move_to_element(jicle).perform()
+            driver.execute_script("arguments[0].click();", jicle)
+            
+            try:
+                alert3 = driver.switch_to.alert
+                alert3.dismiss()
+            except NoAlertPresentException:
+                pass  # alert 창이 없는 경우 pass
+                    
+            
+                    
+            for handle in mainhandle3[1:]:
+                driver.switch_to.window(handle)
+                driver.close()
+            
+            driver.switch_to.window(mainhandle3[0])
+            
+                #닫기
+
+            
+            driver.switch_to.frame('txppIframe')
+            
+            print("다운로드 완료")
+            #주민번호 입력
+        else:
+            mainhandle4 = driver.window_handles
+            for handle in mainhandle4[1:]:
+                driver.switch_to.window(handle)
+                driver.close()
+            driver.switch_to.window(mainhandle4[0])
+            driver.switch_to.frame('txppIframe')
+            print("다운로드 완료")
+        
+        
+
+    #jubunin = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="input_txprRgtNo_UTERNAAZ31"]')))
+    #jubunin.send_keys(jubun)
+
+while True:
+    # 패스워드 윈도우를 생성하고, 유저가 입력한 값을 가져와서 주민번호 입력칸에 넣습니다.
+    password_window = PasswordWindow(driver)
+    password_window.root.mainloop()
