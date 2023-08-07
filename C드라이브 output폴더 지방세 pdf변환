@@ -26,12 +26,15 @@ def extract_text_after_keyword(page_text, keyword1, keyword2, num_words_after_ke
     index2 = page_text.find(keyword2)
     if index2 != -1:
         words_after_keyword2 = words[words.index(keyword2) + 1: words.index(keyword2) + 1 + num_words_after_keyword2]
-
-        # 세번째 단어가 "까지"인 경우, 이전 단어를 사용합니다.
+        # 만약 words_after_keyword2의 세번째 단어가 "까지"인 경우, 이전 단어를 사용하도록 합니다.
         if len(words_after_keyword2) >= 3 and words_after_keyword2[2] == "까지":
-            result2 = words_after_keyword2[1]
+            prev_first_word_index = words.index(keyword2) - 1
+            if prev_first_word_index >= 0:
+                result2 = words[prev_first_word_index]
+            else:
+                result2 = None
         else:
-            result2 = words_after_keyword2[-1]
+            result2 = words_after_keyword2[2] if len(words_after_keyword2) >= 3 else None
     else:
         result2 = None
 
@@ -59,13 +62,24 @@ def get_all_pdf_files(folder_path):
     return pdf_files
 
 if __name__ == "__main__":
-    pdf_folder = r"C:\output"  # PDF 파일이 들어있는 폴더 경로를 입력하세요.
+    folder_path = r"C:\output"  # PDF 파일들이 저장된 폴더 경로를 입력하세요.
     keyword1 = "과세대상"
     keyword2 = "납세자"
     num_words_after_keyword1 = 4
     num_words_after_keyword2 = 3
 
-    pdf_files = get_all_pdf_files(pdf_folder)
+    pdf_files = get_all_pdf_files(folder_path)
+
+    for pdf_file in pdf_files:
+        extracted_results, total_pages = process_all_pages(pdf_file, keyword1, keyword2, num_words_after_keyword1, num_words_after_keyword2)
+
+        for page_num, (extracted_text1, extracted_text2) in enumerate(extracted_results, start=1):
+            if extracted_text1 and extracted_text2:
+                combined_text = extracted_text1 + " " + extracted_text2
+                print(f"Combined text: {combined_text}")
+            else:
+                print(f"PDF: {pdf_file}, Page {page_num}")
+                print(f"키워드를 찾을 수 없습니다.")
 
     for pdf_file in pdf_files:
         extracted_results, total_pages = process_all_pages(pdf_file, keyword1, keyword2, num_words_after_keyword1, num_words_after_keyword2)
@@ -73,7 +87,7 @@ if __name__ == "__main__":
         combined_texts = []
         for page_num, (extracted_text1, extracted_text2) in enumerate(extracted_results, start=1):
             if extracted_text1 and extracted_text2:
-                combined_text = extracted_text1 + " " + extracted_text2
+                combined_text = extracted_text2 + " " + extracted_text1 
                 combined_texts.append(combined_text)
                 print(f"Page {page_num}: Combined text: {combined_text}")
 
@@ -85,7 +99,7 @@ if __name__ == "__main__":
                 file_name = f"{combined_text}_{page_num}_{file_name_without_ext}.jpg"
 
                 # 이미지를 JPG로 저장
-                output_path = os.path.join(pdf_folder, file_name)
+                output_path = os.path.join(folder_path, file_name)
                 images[page_num - 1].save(output_path, "JPEG")
 
                 print(f"Page {page_num} 이미지 저장 완료: {output_path}")
