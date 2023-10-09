@@ -1,0 +1,78 @@
+import os
+from PyPDF2 import PdfReader, PdfWriter
+
+def split_pdf(input_pdf, output_folder, pages_per_file=3):
+    pdf = PdfReader(input_pdf)
+    total_pages = len(pdf.pages)
+
+    for start_page in range(0, total_pages, pages_per_file):
+        end_page = min(start_page + pages_per_file, total_pages)
+
+        output_pdf = PdfWriter()
+        for page_num in range(start_page, end_page):
+            output_pdf.add_page(pdf.pages[page_num])  # addPage -> add_page로 수정
+
+        output_file = os.path.join(output_folder, f"{os.path.basename(input_pdf)}_{start_page + 1}-{end_page}.pdf")
+        with open(output_file, "wb") as output:
+            output_pdf.write(output)
+            print(f"Created {output_file}")
+
+def process_pdfs_in_folder(input_folder, output_folder, pages_per_file=3):
+    pdf_files = [f for f in os.listdir(input_folder) if f.endswith('.pdf')]
+
+    for pdf_file in pdf_files:
+        input_pdf = os.path.join(input_folder, pdf_file)
+        split_pdf(input_pdf, output_folder, pages_per_file)
+
+if __name__ == "__main__":
+    input_folder = "D:/input"  # PDF 파일이 있는 폴더 경로를 지정하세요
+    output_folder = "D:/input2"  # 분할된 파일을 저장할 폴더 경로를 지정하세요
+    pages_per_file = 3  # 각 파일에 포함할 페이지 수를 지정하세요
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    process_pdfs_in_folder(input_folder, output_folder, pages_per_file)
+
+import os
+from PyPDF2 import PdfReader
+import re
+
+def extract_and_remove_whitespace(pdf_file_path):
+    pdf = PdfReader(pdf_file_path)
+    
+    if len(pdf.pages) < 1:
+        return ""
+
+    first_page = pdf.pages[0]
+    text = first_page.extract_text()
+    
+    # 공백 및 줄바꿈 제거
+    text = re.sub(r'\s', '', text)
+
+    return text
+
+input_folder = "D:/input2"  # PDF 파일이 있는 폴더 경로를 지정하세요
+output_folder = "D:/input2"  # 변경된 파일을 저장할 폴더 경로를 지정하세요
+
+# input_folder 내의 모든 PDF 파일에 대해 처리
+for pdf_file_name in os.listdir(input_folder):
+    if pdf_file_name.endswith(".pdf"):
+        pdf_file_path = os.path.join(input_folder, pdf_file_name)
+        extracted_text = extract_and_remove_whitespace(pdf_file_path)
+
+        # 이름과 ID 추출
+        match_name = re.search(r'⑥성명(.{3})', extracted_text)
+        name_chars = match_name.group(1) if match_name else ""
+
+        match_id = re.search(r'⑦주민\(외국인\)등록번호(.{6})', extracted_text)
+        id_text = match_id.group(1) if match_id else ""
+
+        # 새로운 파일 이름 생성
+        new_file_name = f"{name_chars}_({id_text}).pdf"
+
+        # 파일 이름 변경 및 이동
+        new_file_path = os.path.join(output_folder, new_file_name)
+        os.rename(pdf_file_path, new_file_path)
+
+        print(f"Renamed and moved: {pdf_file_name} -> {new_file_name}")
